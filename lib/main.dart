@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_redux/flutter_redux.dart';
+import 'package:my_app/Screens/HomePage/HomePage.dart';
 import 'package:my_app/Screens/HomeScreen.dart';
 import 'package:redux/redux.dart';
 import 'package:my_app/redux/appstate.dart';
@@ -11,7 +12,6 @@ import 'package:my_app/Screens/LoginScreen.dart';
 import 'package:my_app/Screens/SignupScreen.dart';
 import 'Onboarding.dart';
 import 'package:my_app/Services/auth_provider.dart';
-import 'package:my_app/Screens/HomePage/HomePage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 void main() async {
@@ -67,7 +67,7 @@ class MyApp extends StatelessWidget {
               );
 
             case '/home':
-              return MaterialPageRoute(builder: (_) => const HomeScreen());
+              return MaterialPageRoute(builder: (_) => const HomePage());
 
             default:
               return MaterialPageRoute(builder: (_) => const Onboarding());
