@@ -16,6 +16,7 @@ const classes = [
         "isFirst": true,
         "isLast": false,
         "isPast": false,
+        
       },
       {
         "number": 2,
@@ -40,6 +41,7 @@ const classes = [
         "isFirst": false,
         "isLast": false,
         "isPast": false,
+        "isComplete":true,
       },
       {
         "number": 5,

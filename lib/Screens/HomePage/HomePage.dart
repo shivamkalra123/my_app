@@ -1,3 +1,4 @@
+import "package:firebase_auth/firebase_auth.dart";
 import 'package:flutter/material.dart';
 import "package:font_awesome_flutter/font_awesome_flutter.dart";
 import "package:my_app/Screens/Chat/getStartedPage.dart";
@@ -16,6 +17,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final user = FirebaseAuth.instance.currentUser;
   // final List<String> cardTitles = [
   //   "Learn",
   //   "Speak",
@@ -70,7 +72,7 @@ class _HomePageState extends State<HomePage> {
               left: 30,
               child: Container(
                 child: Text(
-                  "Hello User !",
+                  user?.displayName ?? "Guest",
                   textAlign: TextAlign.left,
                   style: TextStyle(
                     fontSize: 27,
