@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:my_app/Screens/Introductions/completion_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -151,7 +152,15 @@ class _MiniGameScreenState extends State<MiniGameScreen> {
     }
   }
 
-  void _showFinalScore() {
+  void _showFinalScore() async{
+    FirebaseFirestore firestore = FirebaseFirestore.instance;
+    await firestore.collection('exercise_scores').add({
+    'outer_index': widget.chapterIndex,  // Outer exercise title
+    'header_index': widget.topicIndex,  // Inner title inside header
+    'score': score,
+    'total_questions': widget.questions.length,
+    'timestamp': FieldValue.serverTimestamp(),
+  });
     showDialog(
       context: context,
       builder:
@@ -175,7 +184,7 @@ class _MiniGameScreenState extends State<MiniGameScreen> {
                   Navigator.of(
                     context,
                     rootNavigator: true,
-                  ).pop(); // Close the dialog
+                  ).pop(); 
                   Navigator.of(context, rootNavigator: true).push(
                     MaterialPageRoute(
                       builder:

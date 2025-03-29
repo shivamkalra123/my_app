@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 import 'package:my_app/Screens/HomePage/HomePage.dart';
 import 'package:my_app/Screens/HomeScreen.dart';
+
 import 'package:redux/redux.dart';
 import 'package:my_app/redux/appstate.dart';
 import 'package:my_app/redux/reducer.dart';
@@ -13,6 +14,8 @@ import 'package:my_app/Screens/SignupScreen.dart';
 import 'Onboarding.dart';
 import 'package:my_app/Services/auth_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:my_app/redux/fetchUserProgressMiddleware.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,7 +26,10 @@ void main() async {
   final store = Store<AppState>(
     appReducer,
     initialState: AppState(userId: user?.uid),
+    middleware: [fetchUserProgressMiddleware],
+  
   );
+ 
 
   runApp(
     StoreProvider(

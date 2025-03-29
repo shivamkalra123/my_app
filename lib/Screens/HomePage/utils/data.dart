@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 const classes = [
   {
-    "number": 1,
+    "chapter_number": 1,
     "level": "beginner",
     "image": "assets/home_screen/alphabets.png",
     "title": "First Steps in Berlin",
@@ -10,16 +10,17 @@ const classes = [
     "subColor": Color.fromARGB(255, 202, 83, 115),
     "topics": [
       {
-        "number": 1,
+        "chapter_number": 1,
+        "topic_number": 0,
         "title": "Introduction",
         "image": "assets/home_screen/alphabets.png",
         "isFirst": true,
         "isLast": false,
         "isPast": false,
-        
       },
       {
-        "number": 2,
+        "chapter_number": 1,
+        "topic_number": 1,
         "title": "Greetings",
         "image": "assets/home_screen/alphabets.png",
         "isFirst": false,
@@ -27,7 +28,8 @@ const classes = [
         "isPast": false,
       },
       {
-        "number": 3,
+        "chapter_number": 1,
+        "topic_number": 2,
         "title": "Introducing Yourself",
         "image": "assets/home_screen/numbers.png",
         "isFirst": false,
@@ -35,16 +37,18 @@ const classes = [
         "isPast": false,
       },
       {
-        "number": 4,
+        "chapter_number": 1,
+        "topic_number": 3,
         "title": "Asking Questions",
         "image": "assets/home_screen/list.png",
         "isFirst": false,
         "isLast": false,
         "isPast": false,
-        "isComplete":true,
+        "isComplete": true,
       },
       {
-        "number": 5,
+        "chapter_number": 1,
+        "topic_number": 4,
         "title": "Personal Pronouns",
         "image": "assets/home_screen/list.png",
         "isFirst": false,
@@ -52,7 +56,8 @@ const classes = [
         "isPast": false,
       },
       {
-        "number": 6,
+        "chapter_number": 1,
+        "topic_number": 5,
         "title": "Basic Verbs",
         "image": "assets/home_screen/list.png",
         "isFirst": false,
@@ -60,7 +65,8 @@ const classes = [
         "isPast": false,
       },
       {
-        "number": 7,
+        "chapter_number": 1,
+        "topic_number": 6,
         "title": "Definite and Indefinite Articles",
         "image": "assets/home_screen/list.png",
         "isFirst": false,
@@ -70,7 +76,7 @@ const classes = [
     ],
   },
   {
-    "number": 2,
+    "chapter_number": 2,
     "level": "beginner",
     "image": "assets/home_screen/list.png",
     "title": "Exploring the City",
@@ -78,7 +84,8 @@ const classes = [
     "subColor": Color.fromARGB(255, 104, 95, 146),
     "topics": [
       {
-        "number": 1,
+        "chapter_number": 2,
+        "topic_number": 0,
         "title": "Introduction",
         "image": "assets/home_screen/alphabets.png",
         "isFirst": true,
@@ -86,7 +93,8 @@ const classes = [
         "isPast": false,
       },
       {
-        "number": 2,
+        "chapter_number": 2,
+        "topic_number": 1,
         "title": "Everyday Activities",
         "image": "assets/home_screen/alphabets.png",
         "isFirst": false,
@@ -94,7 +102,8 @@ const classes = [
         "isPast": false,
       },
       {
-        "number": 3,
+        "chapter_number": 2,
+        "topic_number": 2,
         "title": "Leisure Activities",
         "image": "assets/home_screen/list.png",
         "isFirst": false,
@@ -102,7 +111,8 @@ const classes = [
         "isPast": false,
       },
       {
-        "number": 4,
+        "chapter_number": 2,
+        "topic_number": 3,
         "title": "Time Phrases",
         "image": "assets/home_screen/list.png",
         "isFirst": false,
@@ -110,7 +120,8 @@ const classes = [
         "isPast": false,
       },
       {
-        "number": 5,
+        "chapter_number": 2,
+        "topic_number": 4,
         "title": "Days of the Week",
         "image": "assets/home_screen/list.png",
         "isFirst": false,
@@ -118,7 +129,8 @@ const classes = [
         "isPast": false,
       },
       {
-        "number": 6,
+        "chapter_number": 2,
+        "topic_number": 5,
         "title": "Present Tense Conjugation",
         "image": "assets/home_screen/list.png",
         "isFirst": false,
@@ -128,7 +140,7 @@ const classes = [
     ],
   },
   {
-    "number": 3,
+    "chapter_number": 3,
     "level": "beginner",
     "image": "assets/home_screen/list.png",
     "title": "Dining & Shopping",
@@ -136,7 +148,8 @@ const classes = [
     "subColor": Color.fromARGB(255, 62, 169, 105),
     "topics": [
       {
-        "number": 1,
+        "chapter_number": 3,
+        "topic_number": 0,
         "title": "Introduction",
         "image": "assets/home_screen/list.png",
         "isFirst": true,
@@ -144,7 +157,8 @@ const classes = [
         "isPast": false,
       },
       {
-        "number": 2,
+        "chapter_number": 3,
+        "topic_number": 1,
         "title": "Food & Drinks",
         "image": "assets/home_screen/list.png",
         "isFirst": false,
@@ -152,7 +166,8 @@ const classes = [
         "isPast": false,
       },
       {
-        "number": 3,
+        "chapter_number": 3,
+        "topic_number": 2,
         "title": "Shopping Terms",
         "image": "assets/home_screen/list.png",
         "isFirst": false,
@@ -160,7 +175,8 @@ const classes = [
         "isPast": false,
       },
       {
-        "number": 4,
+        "chapter_number": 3,
+        "topic_number": 3,
         "title": "Asking for Prices",
         "image": "assets/home_screen/list.png",
         "isFirst": false,
@@ -168,7 +184,8 @@ const classes = [
         "isPast": false,
       },
       {
-        "number": 5,
+        "chapter_number": 3,
+        "topic_number": 4,
         "title": "Polite Requests",
         "image": "assets/home_screen/list.png",
         "isFirst": false,
@@ -176,7 +193,8 @@ const classes = [
         "isPast": false,
       },
       {
-        "number": 6,
+        "chapter_number": 3,
+        "topic_number": 5,
         "title": "Numbers",
         "image": "assets/home_screen/list.png",
         "isFirst": false,
@@ -184,7 +202,8 @@ const classes = [
         "isPast": false,
       },
       {
-        "number": 7,
+        "chapter_number": 3,
+        "topic_number": 6,
         "title": "Negation",
         "image": "assets/home_screen/list.png",
         "isFirst": false,

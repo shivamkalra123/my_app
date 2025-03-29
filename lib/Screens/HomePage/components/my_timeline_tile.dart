@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import "package:timeline_tile/timeline_tile.dart";
 import "event_card.dart";
-
 class MyTimeLineTile extends StatelessWidget {
   final bool isFirst;
   final bool isLast;
@@ -10,6 +9,7 @@ class MyTimeLineTile extends StatelessWidget {
   final String text;
   final Color color;
   final Color subColor;
+  final IconData? trailingIcon;
 
   const MyTimeLineTile({
     super.key,
@@ -20,6 +20,7 @@ class MyTimeLineTile extends StatelessWidget {
     required this.text,
     required this.color,
     required this.subColor,
+    this.trailingIcon,
   });
 
   @override

@@ -13,3 +13,10 @@ class SetUserLevelAction {
   final String? level;
   SetUserLevelAction(this.level);
 }
+class SetCompletedTopicsAction {
+  final List<Map<String, int>> completedTopics;
+  SetCompletedTopicsAction(this.completedTopics);
+}
+
+class FetchUserProgressAction {}
+
