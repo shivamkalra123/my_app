@@ -1,8 +1,12 @@
+import 'package:achievement_view/achievement_view.dart'; // ✅ Import AchievementView
 import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:my_app/Screens/HomePage/utils/data.dart'; // Import your data file
+import 'package:my_app/Screens/HomePage/utils/data.dart'; 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:my_app/redux/actions.dart';
+import 'package:my_app/redux/appstate.dart';
 
 class CompletionScreen extends StatefulWidget {
   final dynamic background;
@@ -25,12 +29,12 @@ class _CompletionScreenState extends State<CompletionScreen>
   late AnimationController _controller;
   late Animation<double> _animation;
   String chapterName = "Unknown Chapter";
+  bool achievementShown = false; // ✅ To prevent duplicate pop-ups
 
   @override
   void initState() {
     super.initState();
 
-    // Initialize animation
     _controller = AnimationController(
       duration: Duration(seconds: 1),
       vsync: this,
@@ -41,65 +45,73 @@ class _CompletionScreenState extends State<CompletionScreen>
     );
 
     _controller.forward();
-
-    // Find the chapter name based on indices
     findChapterName();
   }
 
+  void findChapterName() async {
+    for (var chapter in classes ?? []) { 
+      if (chapter['chapter_number'] == widget.chapterIndex) {
+        for (var topic in (chapter['topics'] ?? [])) {
+          if (topic['topic_number'] == widget.topicIndex) {
+            setState(() {
+              chapterName = (chapter['title'] ?? "Unknown Chapter").toString(); 
+            });
 
-
-void findChapterName() async {
-  print("Debug: Checking chapterIndex = ${widget.chapterIndex}, topicIndex = ${widget.topicIndex}");
-
-  for (var chapter in classes ?? []) { // Ensure 'classes' is not null
-    if (chapter['chapter_number'] == widget.chapterIndex) {
-      for (var topic in (chapter['topics'] ?? [])) {
-        if (topic['topic_number'] == widget.topicIndex) {
-          setState(() {
-            chapterName = (chapter['title'] ?? "Unknown Chapter").toString(); 
-          });
-
-          print("Chapter Name: ${chapterName}");
-          print("Topic Name: ${(topic['title'] ?? "Unknown Topic").toString()}");
-
-          // Save progress to Firestore
-          await saveUserProgress(chapter['chapter_number'], topic['topic_number']);
-          return;
+            await saveUserProgress(chapter['chapter_number'], topic['topic_number']);
+            return;
+          }
         }
       }
     }
   }
 
-  print("Debug: No matching chapter or topic found!");
-}
-
-Future<void> saveUserProgress(int chapter, int topic) async {
-  final user = FirebaseAuth.instance.currentUser; // Get logged-in user
+  Future<void> saveUserProgress(int chapter, int topic) async {
+  final user = FirebaseAuth.instance.currentUser;
   if (user == null) return;
 
   try {
-    await FirebaseFirestore.instance.collection('user_progress').doc(user.uid).set({
-      'completed_topics': FieldValue.arrayUnion([
-        {
-          'chapter_number': chapter,
-          'topic_number': topic,
-          
-        }
-      ]),
+    final completedTopic = {
+      'chapter_number': chapter,
+      'topic_number': topic,
+    };
+
+    await FirebaseFirestore.instance
+        .collection('user_progress')
+        .doc(user.uid)
+        .set({
+      'completed_topics': FieldValue.arrayUnion([completedTopic]),
     }, SetOptions(merge: true));
 
     print("Progress saved successfully!");
+
+    // ✅ Update Redux state
+    final store = StoreProvider.of<AppState>(context, listen: false);
+    final existing = store.state.completedTopics ?? [];
+    final updated = List<Map<String, int>>.from(existing)..add(completedTopic);
+    store.dispatch(SetCompletedTopicsAction(updated));
+
+    // 🏆 Show achievement only once
+    if (chapter == 1 && topic == 0 && !achievementShown) {
+      achievementShown = true;
+      showAchievement();
+    }
   } catch (e) {
     print("Error saving progress: $e");
   }
 }
 
 
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+  void showAchievement() {
+    AchievementView(
+      title: "Achievement Unlocked! 🎉",
+      subTitle: "You've completed your first topic!",
+      icon: Icon(Icons.emoji_events, color: Colors.white),
+      color: Colors.green,
+      textStyleTitle: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+      textStyleSubTitle: TextStyle(fontSize: 14, color: Colors.white),
+      duration: Duration(seconds: 3),
+      isCircle: true,
+    ).show(context);
   }
 
   @override
@@ -196,7 +208,7 @@ Future<void> saveUserProgress(int chapter, int topic) async {
                   width: MediaQuery.of(context).size.width * 0.8,
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color.fromARGB(255, 136, 220, 250),

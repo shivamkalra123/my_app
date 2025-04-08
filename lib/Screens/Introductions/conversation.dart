@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter/widgets.dart';
 import 'package:my_app/Screens/Introductions/convo_data.dart';
 import 'package:my_app/Screens/Introductions/completion_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:bubble/bubble.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
-import "../HomePage/utils/data.dart";
 
 class ConversationScreen extends StatefulWidget {
   final int chapter;

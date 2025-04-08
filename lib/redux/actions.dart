@@ -18,5 +18,7 @@ class SetCompletedTopicsAction {
   SetCompletedTopicsAction(this.completedTopics);
 }
 
+
 class FetchUserProgressAction {}
+
 

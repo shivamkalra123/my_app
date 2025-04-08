@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:my_app/Screens/HomePage/HomePage.dart';
 import 'package:my_app/Screens/Dictionary/api.dart';
 import 'package:lottie/lottie.dart';

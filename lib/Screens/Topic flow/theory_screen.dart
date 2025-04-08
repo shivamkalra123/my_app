@@ -10,12 +10,10 @@
 import 'dart:convert';
 
 import 'package:animated_text_kit/animated_text_kit.dart';
-import 'package:bubble/bubble.dart';
 import 'package:flutter/material.dart';
 import 'package:my_app/Screens/HomePage/utils/data.dart';
 import 'package:my_app/Screens/Topic%20flow/miniGame_screen.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_markdown/flutter_markdown.dart';
 
 class TheoryScreen extends StatefulWidget {
   final int classIndex;

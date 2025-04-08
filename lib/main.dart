@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 import 'package:my_app/Screens/HomePage/HomePage.dart';
-import 'package:my_app/Screens/HomeScreen.dart';
+import 'package:my_app/redux/actions.dart';
 
 import 'package:redux/redux.dart';
 import 'package:my_app/redux/appstate.dart';
@@ -27,9 +27,14 @@ void main() async {
     appReducer,
     initialState: AppState(userId: user?.uid),
     middleware: [fetchUserProgressMiddleware],
-  
   );
- 
+
+  // 🔥 Dispatch action to trigger middleware
+  if (user != null) {
+    print("[DEBUG] Dispatching FetchUserProgressAction...");
+    store.dispatch(FetchUserProgressAction()); 
+
+  }
 
   runApp(
     StoreProvider(
@@ -38,6 +43,7 @@ void main() async {
     ),
   );
 }
+
 
 class MyApp extends StatelessWidget {
   final Store<AppState> store;
