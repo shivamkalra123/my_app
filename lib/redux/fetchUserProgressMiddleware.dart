@@ -24,13 +24,8 @@ void fetchUserProgressMiddleware(Store<AppState> store, action, NextDispatcher n
         print("[DEBUG] Raw Firestore Data: $data");
 
         if (data != null && data.containsKey("completed_topics")) {
-          final List<Map<String, int>> completedTopics = 
-              (data["completed_topics"] as List)
-                  .map((topic) => {
-                        "chapter_number": topic["chapter_number"] as int,
-                        "topic_number": topic["topic_number"] as int,
-                      })
-                  .toList();
+          final Map<String, dynamic> completedTopics =
+              Map<String, dynamic>.from(data["completed_topics"]);
 
           print("[DEBUG] Parsed Completed Topics: $completedTopics");
 
@@ -46,5 +41,5 @@ void fetchUserProgressMiddleware(Store<AppState> store, action, NextDispatcher n
     }
   }
 
-  next(action); // Make sure to call next(action) to continue the Redux flow
+  next(action); // Keep the Redux chain flowing
 }

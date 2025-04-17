@@ -1,17 +1,16 @@
-import "package:firebase_auth/firebase_auth.dart";
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import "package:flutter/services.dart";
-import "package:font_awesome_flutter/font_awesome_flutter.dart";
-import "package:flutter_redux/flutter_redux.dart";
-import "package:my_app/Screens/HomePage/components/bottom_nav_bar.dart";
-import "package:my_app/Screens/Introductions/conversation.dart";
-import "package:my_app/Screens/Topic%20flow/theory_screen.dart";
-import "package:my_app/redux/appstate.dart";
-import "utils/data.dart";
-import "components/my_timeline_tile.dart";
+import 'package:flutter/services.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:flutter_redux/flutter_redux.dart';
+import 'package:my_app/Screens/HomePage/components/bottom_nav_bar.dart';
+import 'package:my_app/Screens/Introductions/conversation.dart';
+import 'package:my_app/Screens/Topic%20flow/theory_screen.dart';
+import 'package:my_app/redux/appstate.dart';
+import 'utils/data.dart';
+import 'components/my_timeline_tile.dart';
 
 class HomePage extends StatefulWidget {
-  
   const HomePage({super.key});
 
   @override
@@ -24,10 +23,10 @@ class _HomePageState extends State<HomePage> {
 
   Future<bool> _onWillPop() async {
     if (_lastPressedTime == null || 
-        DateTime.now().difference(_lastPressedTime!) > Duration(seconds: 2)) {
+        DateTime.now().difference(_lastPressedTime!) > const Duration(seconds: 2)) {
       _lastPressedTime = DateTime.now();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Press back again to exit')),
+        const SnackBar(content: Text('Press back again to exit')),
       );
       return false;
     }
@@ -35,19 +34,87 @@ class _HomePageState extends State<HomePage> {
     return true;
   }
 
+  bool _isTopicCompleted(Map<String, dynamic> completedTopics, int chapterIndex, int topicIndex) {
+    print('Checking if topic is completed - Chapter: $chapterIndex, Topic: $topicIndex');
+    print('Completed topics map: $completedTopics');
+
+    if (completedTopics.isEmpty) {
+      print('Completed topics map is empty');
+      return false;
+    }
+
+    // Dynamically construct the key based on chapter and topic number
+    final completionKey = "chapter_${chapterIndex}_topic_$topicIndex";
+    print('Looking for completion key: $completionKey');
+
+    // Fetch the completion data for the topic
+    final completionData = completedTopics[completionKey];
+
+    if (completionData != null) {
+      print('Completion data found: $completionData');
+      return true; // If there's completion data, the topic is completed
+    }
+
+    print('No completion data found for this topic');
+    return false;
+  }
+
+  bool _isNextTopic(Map<String, dynamic> completedTopics, int chapterIndex, int topicIndex) {
+    print('Checking if topic is next - Chapter: $chapterIndex, Topic: $topicIndex');
+
+    if (completedTopics.isEmpty) {
+      print('Completed topics map is empty');
+      return false;
+    }
+
+    // Check if the current topic is the first one in the chapter
+    if (topicIndex == 0) {
+      print('This is the first topic in the chapter');
+      return false; // The first topic can't be the "next" topic
+    }
+
+    // Dynamically check the previous topic
+    final prevCompletionKey = "chapter_${chapterIndex}_topic_${topicIndex - 1}";
+    print('Looking for previous topic key: $prevCompletionKey');
+
+    // Check if the previous topic is completed
+    final isPrevCompleted = completedTopics[prevCompletionKey] != null;
+    final isCurrentCompleted = _isTopicCompleted(completedTopics, chapterIndex, topicIndex);
+
+    print('Previous topic completed: $isPrevCompleted');
+    print('Current topic completed: $isCurrentCompleted');
+
+    // Return true if the previous topic is completed and the current topic is not
+    return isPrevCompleted && !isCurrentCompleted;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    print('HomePage initialized');
+  }
+
   @override
   Widget build(BuildContext context) {
+    print('Building HomePage');
+
     return WillPopScope(
       onWillPop: _onWillPop,
-      child: StoreConnector<AppState, List<Map<String, int>>>(
-        converter: (store) => store.state.completedTopics ?? [],
+      child: StoreConnector<AppState, Map<String, dynamic>>(
+        converter: (store) {
+          final completedTopics = store.state.completedTopics ?? {};
+          print('StoreConnector - Retrieved completedTopics from store: $completedTopics');
+          return completedTopics;
+        },
         builder: (context, completedTopics) {
+          print('StoreConnector builder - Building with completedTopics: $completedTopics');
+          
           return Scaffold(
             body: Stack(
               children: [
                 Positioned.fill(
                   child: Container(
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       image: DecorationImage(
                         image: AssetImage("assets/home/bg.png"),
                         fit: BoxFit.cover,
@@ -60,7 +127,7 @@ class _HomePageState extends State<HomePage> {
                   left: 30,
                   child: Text(
                     user?.displayName ?? "Guest",
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 27,
                       color: Color(0xFF393939),
                       fontWeight: FontWeight.bold,
@@ -76,6 +143,7 @@ class _HomePageState extends State<HomePage> {
                     padding: EdgeInsets.zero,
                     itemCount: classes.length,
                     itemBuilder: (context, classIndex) {
+                      print('Building chapter $classIndex');
                       final classData = classes[classIndex];
 
                       return Padding(
@@ -85,8 +153,8 @@ class _HomePageState extends State<HomePage> {
                           children: [
                             Container(
                               height: 100,
-                              padding: EdgeInsets.symmetric(horizontal: 20),
-                              margin: EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              margin: const EdgeInsets.only(bottom: 10),
                               decoration: BoxDecoration(
                                 color: classData["color"] as Color,
                                 borderRadius: BorderRadius.circular(20),
@@ -108,7 +176,7 @@ class _HomePageState extends State<HomePage> {
                                       ),
                                       Text(
                                         classData["title"] as String,
-                                        style: TextStyle(
+                                        style: const TextStyle(
                                           fontSize: 16,
                                           color: Colors.white,
                                           fontWeight: FontWeight.w700,
@@ -117,7 +185,7 @@ class _HomePageState extends State<HomePage> {
                                     ],
                                   ),
                                   Container(
-                                    padding: EdgeInsets.all(10),
+                                    padding: const EdgeInsets.all(10),
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       border: Border.all(
@@ -137,28 +205,22 @@ class _HomePageState extends State<HomePage> {
                             ListView.builder(
                               padding: EdgeInsets.zero,
                               shrinkWrap: true,
-                              physics: NeverScrollableScrollPhysics(),
+                              physics: const NeverScrollableScrollPhysics(),
                               itemCount: (classData["topics"] as List).length,
                               itemBuilder: (context, topicIndex) {
+                                print('Building topic $topicIndex for chapter $classIndex');
                                 final topic = (classData["topics"] as List)[topicIndex];
+                                final isCompleted = _isTopicCompleted(completedTopics, classIndex + 1, topicIndex);
+                                final isNextTopic = _isNextTopic(completedTopics, classIndex + 1, topicIndex);
+                                final isFirstTopic = classIndex == 0 && topicIndex == 0;
+                                final isEnabled = isCompleted || isNextTopic || isFirstTopic;
 
-                                bool isCompleted = completedTopics.any((completed) =>
-                                    completed["chapter_number"] == classIndex + 1 &&
-                                    completed["topic_number"] == topicIndex);
-
-                                bool isNextTopic =
-                                    completedTopics.any((completed) =>
-                                        completed["chapter_number"] == classIndex + 1 &&
-                                        completed["topic_number"] == topicIndex - 1) &&
-                                    !isCompleted;
-
-                                bool isFirstTopic = classIndex == 0 && topicIndex == 0;
-                                bool isEnabled = isCompleted || isNextTopic || isFirstTopic;
-
+                                print('Topic status - Completed: $isCompleted, Next: $isNextTopic, First: $isFirstTopic, Enabled: $isEnabled');
 
                                 return GestureDetector(
                                   onTap: isEnabled
                                       ? () {
+                                          print('Navigating to topic ${topic["title"]}');
                                           Navigator.push(
                                             context,
                                             MaterialPageRoute(
@@ -171,21 +233,22 @@ class _HomePageState extends State<HomePage> {
                                                     ),
                                             ),
                                           ).then((_) {
-                                            // This triggers a rebuild by calling setState
+                                            print('Returned from topic screen, rebuilding');
                                             setState(() {});
                                           });
                                         }
                                       : () {
+                                          print('Topic locked - showing snackbar');
                                           ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text('Complete the previous topic to unlock this')),
+                                            const SnackBar(content: Text('Complete the previous topic to unlock this')),
                                           );
                                         },
                                   child: AnimatedSwitcher(
-                                    duration: Duration(milliseconds: 500),
+                                    duration: const Duration(milliseconds: 500),
                                     child: Opacity(
                                       opacity: isEnabled ? 1.0 : 0.5,
                                       child: MyTimeLineTile(
-                                        key: ValueKey("\$classIndex-\$topicIndex"),
+                                        key: ValueKey("$classIndex-$topicIndex"),
                                         isFirst: topicIndex == 0,
                                         isLast: topicIndex == (classData["topics"] as List).length - 1,
                                         isPast: isCompleted,
@@ -216,10 +279,12 @@ class _HomePageState extends State<HomePage> {
                   right: 10,
                   bottom: 120,
                   child: FloatingActionButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      print('FAB pressed');
+                    },
                     backgroundColor: Colors.white,
-                    shape: CircleBorder(),
-                    child: Padding(
+                    shape: const CircleBorder(),
+                    child: const Padding(
                       padding: EdgeInsets.all(8),
                       child: Icon(
                         FontAwesomeIcons.commentDots,
@@ -233,9 +298,7 @@ class _HomePageState extends State<HomePage> {
                   right: 0,
                   left: 0,
                   bottom: 0,
-                  
-                child: CustomBottomNav(currentIndex: 0), // 3 is HomePage
-
+                  child: CustomBottomNav(currentIndex: 0),
                 ),
               ],
             ),

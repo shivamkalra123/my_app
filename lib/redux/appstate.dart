@@ -2,22 +2,22 @@ class AppState {
   final String? userId;
   final String? level;
   final String? language;
-  final List<Map<String, int>> completedTopics;
+  final Map<String, dynamic> completedTopics;
   final int streak;
 
   AppState({
     this.userId,
     this.level,
     this.language,
-    List<Map<String, int>>? completedTopics,
+    Map<String, dynamic>? completedTopics,
     this.streak = 0,
-  }) : completedTopics = completedTopics ?? [];
+  }) : completedTopics = completedTopics ?? {};
 
   AppState copyWith({
     String? userId,
     String? level,
     String? language,
-    List<Map<String, int>>? completedTopics,
+    Map<String, dynamic>? completedTopics,
     int? streak,
   }) {
     return AppState(

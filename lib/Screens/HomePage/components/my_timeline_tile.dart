@@ -55,6 +55,7 @@ class _MyTimeLineTileState extends State<MyTimeLineTile> with SingleTickerProvid
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
 
+    // Check if the topic is completed and update the animation
     checkIfCompleted();
   }
 
@@ -64,27 +65,26 @@ class _MyTimeLineTileState extends State<MyTimeLineTile> with SingleTickerProvid
 
     try {
       final doc = await FirebaseFirestore.instance.collection('user_progress').doc(user.uid).get();
-      final completedTopics = List<Map<String, dynamic>>.from(doc.data()?['completed_topics'] ?? []);
+      final data = doc.data();
+
+      if (data == null) return;
+
+      final completedTopics = data['completed_topics'] as Map<String, dynamic>? ?? {};
+      final completionKey = 'chapter_${widget.chapterIndex}_topic_${widget.topicIndex}';
+      final prevCompletionKey = 'chapter_${widget.chapterIndex}_topic_${widget.topicIndex - 1}';
 
       setState(() {
-        isCompleted = completedTopics.any((topic) =>
-            topic['chapter_number'] == widget.chapterIndex &&
-            topic['topic_number'] == widget.topicIndex);
+        // Check if the current topic is completed
+        isCompleted = completedTopics.containsKey(completionKey);
+        // The next topic is unlocked if the current one is completed
+        isNextTopic = isCompleted || completedTopics.containsKey(prevCompletionKey);
 
-        isNextTopic = completedTopics.any((topic) =>
-                topic['chapter_number'] == widget.chapterIndex &&
-                topic['topic_number'] == widget.topicIndex - 1) &&
-            !isCompleted;
-      if (isNextTopic && !_hasAnimated) {
-        _hasAnimated = true;
-        _controller.forward();
-      }
-
-        if (isNextTopic) {
+        // Trigger animation for the next topic if it's unlocked
+        if (isNextTopic && !_hasAnimated) {
+          _hasAnimated = true;
           _controller.forward();
         }
       });
-
     } catch (e) {
       print("Error fetching progress: $e");
     }
@@ -103,20 +103,15 @@ class _MyTimeLineTileState extends State<MyTimeLineTile> with SingleTickerProvid
       child: TimelineTile(
         isFirst: widget.isFirst,
         isLast: widget.isLast,
-        
-         
-       
-        
         indicatorStyle: IndicatorStyle(
-         width: 30,
-                  height: 30,
+          width: 30,
+          height: 30,
           indicator: AnimatedBuilder(
             animation: _controller,
             builder: (context, child) {
               return Transform.translate(
                 offset: Offset(0.0, isNextTopic ? _slideAnimation.value : 0.0), // ✅ Slides down smoothly
                 child: Container(
-                  
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     image: DecorationImage(
@@ -125,9 +120,7 @@ class _MyTimeLineTileState extends State<MyTimeLineTile> with SingleTickerProvid
                             ? "assets/introductions/zhuaHug.gif" // ✅ Animated GIF for next topic
                             : "assets/profile/cat.png", // ✅ Static for completed topics
                       ),
-                      
                       fit: BoxFit.cover,
-                      
                     ),
                   ),
                 ),
@@ -139,7 +132,7 @@ class _MyTimeLineTileState extends State<MyTimeLineTile> with SingleTickerProvid
           isPast: widget.isPast,
           imagePath: widget.image,
           text: widget.text,
-          color: widget.color,
+          color: isCompleted ? Colors.green : widget.color,  // ✅ Apply green color for completed
           subColor: widget.subColor,
         ),
       ),

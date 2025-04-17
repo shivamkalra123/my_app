@@ -1,17 +1,14 @@
-import 'package:achievement_view/achievement_view.dart'; // ✅ Import AchievementView
 import 'package:flutter/material.dart';
-import 'package:flutter_redux/flutter_redux.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:my_app/Screens/HomePage/utils/data.dart'; 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:my_app/redux/actions.dart';
-import 'package:my_app/redux/appstate.dart';
+import 'package:intl/intl.dart';
+import 'package:my_app/Screens/HomePage/utils/data.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class CompletionScreen extends StatefulWidget {
-  final dynamic background;
   final int chapterIndex;
   final int topicIndex;
+  final dynamic background;
 
   const CompletionScreen({
     super.key,
@@ -21,22 +18,24 @@ class CompletionScreen extends StatefulWidget {
   });
 
   @override
-  _CompletionScreenState createState() => _CompletionScreenState();
+  State<CompletionScreen> createState() => _CompletionScreenState();
 }
 
 class _CompletionScreenState extends State<CompletionScreen>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+  String topicName = "";
   String chapterName = "Unknown Chapter";
-  bool achievementShown = false; // ✅ To prevent duplicate pop-ups
+  bool _isSaving = false;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
 
     _controller = AnimationController(
-      duration: Duration(seconds: 1),
+      duration: const Duration(seconds: 1),
       vsync: this,
     );
 
@@ -45,73 +44,85 @@ class _CompletionScreenState extends State<CompletionScreen>
     );
 
     _controller.forward();
-    findChapterName();
+    fetchTopicNameAndSaveProgress();
   }
 
-  void findChapterName() async {
-    for (var chapter in classes ?? []) { 
-      if (chapter['chapter_number'] == widget.chapterIndex) {
-        for (var topic in (chapter['topics'] ?? [])) {
-          if (topic['topic_number'] == widget.topicIndex) {
-            setState(() {
-              chapterName = (chapter['title'] ?? "Unknown Chapter").toString(); 
-            });
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
-            await saveUserProgress(chapter['chapter_number'], topic['topic_number']);
-            return;
+  void fetchTopicNameAndSaveProgress() async {
+    try {
+      final chapter = classes[widget.chapterIndex] as Map<String, dynamic>;
+      final topic = chapter["topics"][widget.topicIndex] as Map<String, dynamic>;
+      setState(() {
+        topicName = topic["title"];
+        chapterName = chapter["title"] ?? "Unknown Chapter";
+      });
+
+      await _saveTopicCompletion();
+    } catch (e) {
+      print("Error fetching topic: $e");
+      setState(() {
+        _errorMessage = "Failed to load topic details";
+      });
+    }
+  }
+
+  Future<void> _saveTopicCompletion() async {
+    if (_isSaving) return;
+
+    setState(() {
+      _isSaving = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) throw Exception("User not authenticated");
+
+      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final completionKey = "chapter_${widget.chapterIndex}_topic_${widget.topicIndex}";
+
+      await FirebaseFirestore.instance
+          .collection("user_progress")
+          .doc(userId)
+          .set({
+        "completed_topics": {
+          completionKey: {
+            
+            "chapter_number": widget.chapterIndex,
+            "topic_number": widget.topicIndex,
+            "topic_name": topicName,
+            "chapter_name": chapterName,
+            "completed_at": FieldValue.serverTimestamp(),
+            "date": today,
           }
-        }
+        },
+        "last_updated": FieldValue.serverTimestamp(),
+        "completion_dates": {
+          today: FieldValue.arrayUnion([completionKey])
+        },
+      }, SetOptions(merge: true));
+    } on FirebaseException catch (e) {
+      print("Firestore error: ${e.message}");
+      setState(() {
+        _errorMessage = "Failed to save progress. Please check your connection.";
+      });
+    } catch (e) {
+      print("Unexpected error: $e");
+      setState(() {
+        _errorMessage = "An unexpected error occurred";
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
       }
     }
-  }
-
-  Future<void> saveUserProgress(int chapter, int topic) async {
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) return;
-
-  try {
-    final completedTopic = {
-      'chapter_number': chapter,
-      'topic_number': topic,
-    };
-
-    await FirebaseFirestore.instance
-        .collection('user_progress')
-        .doc(user.uid)
-        .set({
-      'completed_topics': FieldValue.arrayUnion([completedTopic]),
-    }, SetOptions(merge: true));
-
-    print("Progress saved successfully!");
-
-    // ✅ Update Redux state
-    final store = StoreProvider.of<AppState>(context, listen: false);
-    final existing = store.state.completedTopics ?? [];
-    final updated = List<Map<String, int>>.from(existing)..add(completedTopic);
-    store.dispatch(SetCompletedTopicsAction(updated));
-
-    // 🏆 Show achievement only once
-    if (chapter == 1 && topic == 0 && !achievementShown) {
-      achievementShown = true;
-      showAchievement();
-    }
-  } catch (e) {
-    print("Error saving progress: $e");
-  }
-}
-
-
-  void showAchievement() {
-    AchievementView(
-      title: "Achievement Unlocked! 🎉",
-      subTitle: "You've completed your first topic!",
-      icon: Icon(Icons.emoji_events, color: Colors.white),
-      color: Colors.green,
-      textStyleTitle: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-      textStyleSubTitle: TextStyle(fontSize: 14, color: Colors.white),
-      duration: Duration(seconds: 3),
-      isCircle: true,
-    ).show(context);
   }
 
   @override
@@ -119,6 +130,7 @@ class _CompletionScreenState extends State<CompletionScreen>
     return Scaffold(
       body: Stack(
         children: [
+          // Background image
           Positioned.fill(
             child: Image.asset(
               widget.background is String
@@ -127,9 +139,15 @@ class _CompletionScreenState extends State<CompletionScreen>
               fit: BoxFit.cover,
             ),
           ),
+
+          // Color overlay
           Positioned.fill(
-            child: Container(color: Color.fromARGB(255, 255, 44, 94).withOpacity(0.2)),
+            child: Container(
+              color: const Color.fromARGB(255, 255, 44, 94).withOpacity(0.2),
+            ),
           ),
+
+          // Hug GIF
           Positioned(
             top: 35,
             left: 0,
@@ -138,7 +156,7 @@ class _CompletionScreenState extends State<CompletionScreen>
               child: Container(
                 height: 250,
                 width: 250,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   image: DecorationImage(
                     image: AssetImage('assets/introductions/zhuaHug.gif'),
                     fit: BoxFit.contain,
@@ -147,6 +165,8 @@ class _CompletionScreenState extends State<CompletionScreen>
               ),
             ),
           ),
+
+          // Center Card
           Center(
             child: Container(
               decoration: BoxDecoration(
@@ -156,18 +176,18 @@ class _CompletionScreenState extends State<CompletionScreen>
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.2),
-                    offset: Offset(0, 4),
+                    offset: const Offset(0, 4),
                     blurRadius: 15,
                   ),
                 ],
               ),
-              padding: EdgeInsets.all(25),
-              margin: EdgeInsets.symmetric(horizontal: 50),
+              padding: const EdgeInsets.all(25),
+              margin: const EdgeInsets.symmetric(horizontal: 50),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.emoji_events, size: 120, color: Color.fromARGB(255, 250, 194, 110)),
-                  SizedBox(height: 10),
+                  const Icon(Icons.emoji_events, size: 120, color: Color.fromARGB(255, 250, 194, 110)),
+                  const SizedBox(height: 10),
                   AnimatedBuilder(
                     animation: _animation,
                     builder: (context, child) {
@@ -178,26 +198,51 @@ class _CompletionScreenState extends State<CompletionScreen>
                           style: GoogleFonts.poppins(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: Color.fromARGB(255, 54, 53, 53),
+                            color: const Color.fromARGB(255, 54, 53, 53),
                           ),
                         ),
                       );
                     },
                   ),
-                  SizedBox(height: 15),
+                  const SizedBox(height: 15),
                   Text(
-                    "You have completed this topic in:\n$chapterName",
+                    "You have completed:\n$topicName\nin $chapterName",
                     style: GoogleFonts.poppins(
                       fontSize: 18,
-                      color: Color.fromARGB(255, 57, 57, 57).withOpacity(0.7),
+                      color: const Color.fromARGB(255, 57, 57, 57).withOpacity(0.7),
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: 30),
+                  if (_isSaving) ...[
+                    const SizedBox(height: 16),
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Saving your progress...",
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        color: const Color.fromARGB(255, 57, 57, 57),
+                      ),
+                    ),
+                  ],
+                  if (_errorMessage != null) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      _errorMessage!,
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        color: Colors.red,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                  const SizedBox(height: 30),
                 ],
               ),
             ),
           ),
+
+          // Bottom button
           Positioned(
             bottom: 20,
             left: 0,
@@ -208,19 +253,21 @@ class _CompletionScreenState extends State<CompletionScreen>
                   width: MediaQuery.of(context).size.width * 0.8,
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+                      Navigator.of(context).pop();
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color.fromARGB(255, 136, 220, 250),
-                      padding: EdgeInsets.symmetric(horizontal: 35, vertical: 18),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-                      shadowColor: Color.fromARGB(255, 77, 156, 229).withOpacity(0.4),
+                      backgroundColor: const Color.fromARGB(255, 136, 220, 250),
+                      padding: const EdgeInsets.symmetric(horizontal: 35, vertical: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      shadowColor: const Color.fromARGB(255, 77, 156, 229).withOpacity(0.4),
                       elevation: 10,
                     ),
                     child: Text(
-                      "Back to Home page",
+                      "Continue",
                       style: GoogleFonts.poppins(
-                        color: Color.fromARGB(255, 74, 70, 177),
+                        color: const Color.fromARGB(255, 74, 70, 177),
                         fontSize: 20,
                         fontWeight: FontWeight.w600,
                       ),

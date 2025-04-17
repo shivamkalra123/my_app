@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter_redux/flutter_redux.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_redux/flutter_redux.dart';
 import 'package:my_app/redux/appstate.dart';
+import 'AvatarPickerScreen.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -16,12 +18,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final TextEditingController _emailController = TextEditingController();
 
   bool isLoading = true;
-  String? photoURL;
+  List<String> avatarUrls = [];
+  int? avatarIndex;
 
   @override
   void initState() {
     super.initState();
+    _loadAvatars();
     _loadUserData();
+  }
+
+  Future<void> _loadAvatars() async {
+    final String jsonString = await rootBundle.loadString('assets/avatars.json');
+    final Map<String, dynamic> jsonData = json.decode(jsonString);
+    setState(() {
+      avatarUrls = List<String>.from(jsonData['avatars']);
+    });
   }
 
   Future<void> _loadUserData() async {
@@ -34,48 +46,67 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
 
     try {
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      DocumentSnapshot userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(userId).get();
 
       if (userDoc.exists) {
         Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
         _nameController.text = data['displayName'] ?? '';
         _emailController.text = data['email'] ?? '';
+        avatarIndex = data['avatarIndex'];
       }
     } catch (e) {
       print("Error fetching user data: $e");
     }
 
-    final User? user = FirebaseAuth.instance.currentUser;
-    photoURL = user?.photoURL;
-
     setState(() => isLoading = false);
   }
+void _updateProfile() async {
+  final store = StoreProvider.of<AppState>(context, listen: false);
+  final String userId = store.state.userId ?? "";
 
-  void _updateProfile() async {
-    final store = StoreProvider.of<AppState>(context, listen: false);
-    final String userId = store.state.userId ?? "";
+  try {
+    await FirebaseFirestore.instance.collection('users').doc(userId).update({
+      'displayName': _nameController.text,
+      'email': _emailController.text,
+    });
 
-    try {
-      await FirebaseFirestore.instance.collection('users').doc(userId).update({
-        'fullName': _nameController.text,
-        'email': _emailController.text,
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Profile updated successfully')),
+    );
+
+    // Delay briefly so user sees the snackbar, then navigate back
+    Future.delayed(Duration(milliseconds: 500), () {
+      Navigator.pop(context); // This takes you back to UserProfile screen
+    });
+  } catch (e) {
+    print("Error updating profile: $e");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to update profile')),
+    );
+  }
+}
+
+
+  Future<void> _openAvatarPicker() async {
+    final selected = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => AvatarPickerScreen()),
+    );
+
+    if (selected != null && selected is int) {
+      setState(() {
+        avatarIndex = selected;
       });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Profile updated successfully')),
-      );
-    } catch (e) {
-      print("Error updating profile: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update profile')),
-      );
     }
   }
 
-  final user = FirebaseAuth.instance.currentUser;
-
   @override
   Widget build(BuildContext context) {
+    final userAvatar = (avatarIndex != null && avatarIndex! < avatarUrls.length)
+        ? avatarUrls[avatarIndex!]
+        : null;
+
     return Scaffold(
       appBar: AppBar(
         title: Text("Edit Profile", style: TextStyle(fontSize: 20)),
@@ -101,39 +132,29 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     Color(0xFFF4E5F1),
                     Color(0xFFFFC6D5),
                   ],
-                  stops: [
-                    0.0,
-                    0.15,
-                    0.19,
-                    0.22,
-                    0.30,
-                    0.52,
-                    0.75,
-                    0.88,
-                    1.0,
-                  ],
                 ),
               ),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(20.0),
                 child: Column(
                   children: [
-                    user?.photoURL != null
-                        ? CircleAvatar(
-                            radius: 50,
-                            backgroundImage: NetworkImage(user!.photoURL!),
-                          )
-                        : CircleAvatar(
-                            radius: 50,
-                            backgroundImage: NetworkImage(
-                              "https://plus.unsplash.com/premium_photo-1664474619075-644dd191935f?fm=jpg&q=60&w=3000&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8aW1hZ2V8ZW58MHx8MHx8fDA%3D",
-                            ),
-                          ),
+                    GestureDetector(
+                      onTap: _openAvatarPicker,
+                      child: CircleAvatar(
+                        radius: 50,
+                        backgroundImage: userAvatar != null
+                            ? NetworkImage(userAvatar)
+                            : NetworkImage(
+                                "https://plus.unsplash.com/premium_photo-1664474619075-644dd191935f?fm=jpg&q=60&w=3000&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8aW1hZ2V8ZW58MHx8MHx8fDA%3D",
+                              ),
+                      ),
+                    ),
                     SizedBox(height: 20),
                     TextField(
                       controller: _nameController,
                       decoration: InputDecoration(
                         labelText: "Full Name",
+                        labelStyle: TextStyle(fontSize: 14),
                         border: OutlineInputBorder(),
                         filled: true,
                         fillColor: Colors.white,
@@ -144,6 +165,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       controller: _emailController,
                       decoration: InputDecoration(
                         labelText: "Email",
+                        labelStyle: TextStyle(fontSize: 14),
                         border: OutlineInputBorder(),
                         filled: true,
                         fillColor: Colors.white,
@@ -158,7 +180,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             EdgeInsets.symmetric(horizontal: 40, vertical: 15),
                       ),
                       child: Text("Save Changes",
-                          style: TextStyle(fontSize: 16)),
+                          style: TextStyle(fontSize: 16, color: Colors.white)),
                     ),
                   ],
                 ),

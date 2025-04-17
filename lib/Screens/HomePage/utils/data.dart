@@ -10,7 +10,7 @@ const classes = [
     "subColor": Color.fromARGB(255, 202, 83, 115),
     "topics": [
       {
-        "chapter_number": 1,
+        "chapter_number": 1,  
         "topic_number": 0,
         "title": "Introduction",
         "image": "assets/home_screen/alphabets.png",

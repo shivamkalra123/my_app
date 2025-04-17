@@ -3,7 +3,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 import 'package:my_app/Screens/HomePage/HomePage.dart';
 import 'package:my_app/redux/actions.dart';
-
 import 'package:redux/redux.dart';
 import 'package:my_app/redux/appstate.dart';
 import 'package:my_app/redux/reducer.dart';
@@ -11,11 +10,11 @@ import 'package:my_app/Screens/LanguageScreen.dart';
 import 'package:my_app/Screens/LevelScreen.dart';
 import 'package:my_app/Screens/LoginScreen.dart';
 import 'package:my_app/Screens/SignupScreen.dart';
+import 'package:my_app/Screens/UserProfile/UserProfile.dart'; // Added missing semicolon
 import 'Onboarding.dart';
 import 'package:my_app/Services/auth_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:my_app/redux/fetchUserProgressMiddleware.dart';
-
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,8 +31,7 @@ void main() async {
   // 🔥 Dispatch action to trigger middleware
   if (user != null) {
     print("[DEBUG] Dispatching FetchUserProgressAction...");
-    store.dispatch(FetchUserProgressAction()); 
-
+    store.dispatch(FetchUserProgressAction());
   }
 
   runApp(
@@ -43,7 +41,6 @@ void main() async {
     ),
   );
 }
-
 
 class MyApp extends StatelessWidget {
   final Store<AppState> store;
@@ -80,6 +77,10 @@ class MyApp extends StatelessWidget {
 
             case '/home':
               return MaterialPageRoute(builder: (_) => const HomePage());
+
+            // Add settings route here
+            case '/settings':
+              return MaterialPageRoute(builder: (_) => const ProfilePage());
 
             default:
               return MaterialPageRoute(builder: (_) => const Onboarding());

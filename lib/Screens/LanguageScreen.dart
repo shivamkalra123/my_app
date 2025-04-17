@@ -1,18 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
+import 'package:my_app/Screens/LevelScreen.dart';
 import 'package:my_app/redux/appstate.dart';
-import 'LevelScreen.dart';
 
 class LanguageScreen extends StatelessWidget {
-  const LanguageScreen({super.key});
+  final bool fromSettings; // <-- NEW
+  const LanguageScreen({super.key, this.fromSettings = false});
 
   @override
   Widget build(BuildContext context) {
     return StoreConnector<AppState, String?>(
       converter: (store) => store.state.userId,
       builder: (context, userId) {
-        print('🔹 User ID from Redux Store: $userId');
         if (userId == null) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
@@ -30,7 +30,7 @@ class LanguageScreen extends StatelessWidget {
               ),
               Padding(
                 padding: const EdgeInsets.only(top: 150),
-                child: LanguageListView(userId: userId),
+                child: LanguageListView(userId: userId, fromSettings: fromSettings),
               ),
             ],
           ),
@@ -42,7 +42,13 @@ class LanguageScreen extends StatelessWidget {
 
 class LanguageListView extends StatelessWidget {
   final String userId;
-  const LanguageListView({super.key, required this.userId});
+  final bool fromSettings;
+
+  const LanguageListView({
+    super.key,
+    required this.userId,
+    this.fromSettings = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +60,7 @@ class LanguageListView extends StatelessWidget {
             flagPath: 'assets/images/germany_flag.png',
             language: 'German',
             userId: userId,
+            fromSettings: fromSettings,
           ),
         ],
       ),
@@ -65,11 +72,13 @@ class LanguageTile extends StatelessWidget {
   final String flagPath;
   final String language;
   final String userId;
+  final bool fromSettings;
 
   const LanguageTile({
     required this.flagPath,
     required this.language,
     required this.userId,
+    this.fromSettings = false,
     super.key,
   });
 
@@ -90,11 +99,19 @@ class LanguageTile extends StatelessWidget {
       leading: Image.asset(flagPath, width: 30),
       title: Text(language),
       onTap: () async {
-        await _saveLanguageToFirestore(); // Save to Firestore
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => LevelScreen(userId: userId)),
-        );
+        await _saveLanguageToFirestore();
+        
+        if (fromSettings) {
+          Navigator.pop(context);
+        } else {
+          // Otherwise, navigate to the LevelScreen
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => LevelScreen(userId: userId, fromSettings: fromSettings),
+            ),
+          );
+        }
       },
     );
   }
