@@ -8,7 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:my_app/Screens/UserProfile/EditProfile.dart';
 import 'package:my_app/Screens/UserProfile/ReferFriend.dart';
 import 'package:my_app/Screens/UserProfile/settings/UserProfileSettings.dart';
-import 'streaktab.dart';
+import 'package:my_app/Screens/UserProfile/StreakTab.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
