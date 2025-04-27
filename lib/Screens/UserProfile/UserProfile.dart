@@ -4,11 +4,14 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_redux/flutter_redux.dart';
+import 'package:my_app/redux/appstate.dart';
 
 import 'package:my_app/Screens/UserProfile/EditProfile.dart';
 import 'package:my_app/Screens/UserProfile/ReferFriend.dart';
 import 'package:my_app/Screens/UserProfile/settings/UserProfileSettings.dart';
 import 'package:my_app/Screens/UserProfile/StreakTab.dart';
+import 'package:my_app/Screens/UserProfile/settings/transaltion_service/translation.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -21,11 +24,23 @@ class _ProfilePageState extends State<ProfilePage> {
   int selectedTabIndex = 0;
   String? avatarUrl;
   bool avatarLoading = true;
+  bool _isLanguageLoaded = false;
+  final TranslationService _translator = TranslationService();
 
   @override
   void initState() {
     super.initState();
+    _loadLanguage();
     loadAvatar();
+  }
+
+  Future<void> _loadLanguage() async {
+    final store = StoreProvider.of<AppState>(context, listen: false);
+    final selectedLang = store.state.selectedLanguageCode ?? 'en';
+    await _translator.setLanguage(selectedLang);
+    setState(() {
+      _isLanguageLoaded = true;
+    });
   }
 
   Future<void> loadAvatar() async {
@@ -56,21 +71,31 @@ class _ProfilePageState extends State<ProfilePage> {
 
   void navigateToTab(int index) => setState(() => selectedTabIndex = index);
 
-  void onGeneralItemTap(String title) {
-    switch (title) {
-      case "Refer a Friend":
+  void onGeneralItemTap(String identifier) {
+    switch (identifier) {
+      case "refer_friend":
         Navigator.push(context, MaterialPageRoute(builder: (_) => const ReferAFriendPage()));
         break;
-      // Add more cases as needed.
-    }
-    switch(title){
-      case "Settings":
-      Navigator.push(context, MaterialPageRoute(builder: (_)=> const UserProfileSettings()));
+      case "settings":
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const UserProfileSettings()));
+        break;
+      case "feedback":
+        // Handle feedback navigation
+        break;
+      case "help":
+        // Handle help navigation
+        break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!_isLanguageLoaded) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -92,116 +117,113 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () => Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false),
-                      child: Row(
-                        children: [
-                          Image.asset('assets/profile/arrow_icon.png', height: 20, width: 20),
-                          const SizedBox(width: 8),
-                          Text('Back', style: GoogleFonts.lato(fontSize: 14, color: const Color(0xFF437D28))),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                avatarLoading
-                    ? const CircularProgressIndicator()
-                    : CircleAvatar(
-                        radius: 53,
-                        backgroundColor: Colors.white,
-                        child: ClipOval(
-                          child: Image.network(
-                            avatarUrl ?? 'https://i.pravatar.cc/150?img=1',
-                            fit: BoxFit.cover,
-                            width: 100,
-                            height: 100,
-                            errorBuilder: (context, error, stackTrace) => const Icon(Icons.error),
-                            loadingBuilder: (context, child, loadingProgress) =>
-                                loadingProgress == null ? child : const CircularProgressIndicator(),
-                          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false),
+                    child: Row(
+                      children: [
+                        Image.asset('assets/profile/arrow_icon.png', height: 20, width: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          _translator.translate('Back'),
+                          style: GoogleFonts.lato(fontSize: 14, color: const Color(0xFF437D28)),
                         ),
-                      ),
-
-                const SizedBox(height: 10),
-                Image.asset('assets/profile/catHands.png', fit: BoxFit.cover, width: 380, height: 70),
-                const SizedBox(height: 20),
-
-                Divider(color: Colors.grey.shade300, thickness: 1),
-
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
+                      ],
+                    ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildTab("General", 0),
-                      _buildTab("Streak🔥", 1),
-                      _buildTab("Goals", 2),
-                    ],
-                  ),
-                ),
+                ],
+              ),
+              const SizedBox(height: 20),
 
-                const SizedBox(height: 10),
-
-                Container(
-                  margin: const EdgeInsets.only(top: 16),
-                  padding: const EdgeInsets.all(20),
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 1,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                  child: _buildTabContent(),
-                ),
-
-                const SizedBox(height: 20),
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Image.asset('assets/profile/editButton.png', height: 250, width: 250),
-                    Positioned(
-                      bottom: 50,
-                      child: GestureDetector(
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfilePage())),
-                        child: Text.rich(
-                          TextSpan(
-                            style: GoogleFonts.lato(fontSize: 17, fontWeight: FontWeight.bold, color: const Color(0xFF837977)),
-                            children: [
-                              const TextSpan(text: "Want to "),
-                              TextSpan(
-                                text: "Edit",
-                                style: GoogleFonts.lato(fontSize: 17, fontWeight: FontWeight.bold, color: const Color(0xFFEA4877)),
-                              ),
-                              const TextSpan(text: " Profile?"),
-                            ],
-                          ),
+              avatarLoading
+                  ? const CircularProgressIndicator()
+                  : CircleAvatar(
+                      radius: 53,
+                      backgroundColor: Colors.white,
+                      child: ClipOval(
+                        child: Image.network(
+                          avatarUrl ?? 'https://i.pravatar.cc/150?img=1',
+                          fit: BoxFit.cover,
+                          width: 100,
+                          height: 100,
+                          errorBuilder: (context, error, stackTrace) => const Icon(Icons.error),
+                          loadingBuilder: (context, child, loadingProgress) =>
+                              loadingProgress == null ? child : const CircularProgressIndicator(),
                         ),
                       ),
                     ),
+
+              Image.asset('assets/profile/catHands.png', fit: BoxFit.cover, width: 380, height: 70),
+
+              Divider(color: Colors.grey.shade300, thickness: 1),
+
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildTab(_translator.translate("General"), 0),
+                    _buildTab(_translator.translate("Streak🔥"), 1),
+                    _buildTab(_translator.translate("Goals"), 2),
                   ],
                 ),
-              ],
-            ),
+              ),
+
+              const SizedBox(height: 10),
+
+              Container(
+                margin: const EdgeInsets.only(top: 16),
+                padding: const EdgeInsets.all(20),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 1,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+                child: _buildTabContent(),
+              ),
+
+              const SizedBox(height: 20),
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  Image.asset('assets/profile/editButton.png', height: 250, width: 250),
+                  Positioned(
+                    bottom: 50,
+                    child: GestureDetector(
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfilePage())),
+                      child: Text.rich(
+                        TextSpan(
+                          style: GoogleFonts.lato(fontSize: 17, fontWeight: FontWeight.bold, color: const Color(0xFF837977)),
+                          children: [
+                            TextSpan(text: _translator.translate("Want to  ")),
+                            TextSpan(
+                              text: _translator.translate("Edit"),
+                              style: GoogleFonts.lato(fontSize: 17, fontWeight: FontWeight.bold, color: const Color(0xFFEA4877)),
+                            ),
+                            TextSpan(text: _translator.translate(" Profile?")),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -233,35 +255,33 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildTabContent() {
     switch (selectedTabIndex) {
       case 0:
-        return ListView(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
+        return Column(
           children: [
-            _buildGeneralItem(Icons.group_add, "Refer a Friend"),
-            _buildGeneralItem(Icons.settings, "Settings"),
-            _buildGeneralItem(Icons.feedback_outlined, "Feedback"),
-            _buildGeneralItem(Icons.help_outline, "Help & Support"),
+            _buildGeneralItem(Icons.group_add, _translator.translate("Refer a Friend"), "refer_friend"),
+            _buildGeneralItem(Icons.settings, _translator.translate("Settings"), "settings"),
+            _buildGeneralItem(Icons.feedback_outlined, _translator.translate("Feedback"), "feedback"),
+            _buildGeneralItem(Icons.help_outline, _translator.translate("Help & Support"), "help"),
           ],
         );
       case 1:
-        return StreakTab();
+        return const StreakTab();
       case 2:
       default:
         return Center(
           child: Text(
-            "Selected Tab: Goals",
+            _translator.translate("Selected Tab: Goals"),
             style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black),
           ),
         );
     }
   }
 
-  Widget _buildGeneralItem(IconData icon, String title) {
+  Widget _buildGeneralItem(IconData icon, String title, String identifier) {
     return ListTile(
       leading: Icon(icon, color: const Color(0xFF5B4473)),
       title: Text(title, style: GoogleFonts.lato(fontWeight: FontWeight.w600)),
       trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-      onTap: () => onGeneralItemTap(title),
+      onTap: () => onGeneralItemTap(identifier),
     );
   }
 }

@@ -7,6 +7,8 @@ import 'package:my_app/Screens/HomePage/components/bottom_nav_bar.dart';
 import 'package:my_app/Screens/Introductions/conversation.dart';
 import 'package:my_app/Screens/Topic%20flow/theory_screen.dart';
 import 'package:my_app/redux/appstate.dart';
+import 'package:my_app/Screens/UserProfile/settings/transaltion_service/translation.dart';
+
 import 'utils/data.dart';
 import 'components/my_timeline_tile.dart';
 
@@ -20,13 +22,41 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final user = FirebaseAuth.instance.currentUser;
   DateTime? _lastPressedTime;
+  
+  final TranslationService _translator = TranslationService();
+
+
+  bool _isLanguageLoaded = false;
+
+ Future<void> _loadLanguage() async {
+ 
+  final store = StoreProvider.of<AppState>(context, listen: false);
+  
+
+  final selectedLang = store.state.selectedLanguageCode ?? 'en'; 
+  
+
+  await _translator.setLanguage(selectedLang);
+
+
+  setState(() {
+    _isLanguageLoaded = true;
+  });
+}
+
+  @override
+  void initState() {
+    super.initState();
+    print('HomePage initialized');
+    _loadLanguage();
+  }
 
   Future<bool> _onWillPop() async {
-    if (_lastPressedTime == null || 
+    if (_lastPressedTime == null ||
         DateTime.now().difference(_lastPressedTime!) > const Duration(seconds: 2)) {
       _lastPressedTime = DateTime.now();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Press back again to exit')),
+        SnackBar(content: Text(_translator.translate('press_back_again_to_exit'))),
       );
       return false;
     }
@@ -35,80 +65,45 @@ class _HomePageState extends State<HomePage> {
   }
 
   bool _isTopicCompleted(Map<String, dynamic> completedTopics, int chapterIndex, int topicIndex) {
-    print('Checking if topic is completed - Chapter: $chapterIndex, Topic: $topicIndex');
-    print('Completed topics map: $completedTopics');
-
-    if (completedTopics.isEmpty) {
-      print('Completed topics map is empty');
-      return false;
-    }
-
-    // Dynamically construct the key based on chapter and topic number
     final completionKey = "chapter_${chapterIndex}_topic_$topicIndex";
-    print('Looking for completion key: $completionKey');
-
-    // Fetch the completion data for the topic
     final completionData = completedTopics[completionKey];
-
-    if (completionData != null) {
-      print('Completion data found: $completionData');
-      return true; // If there's completion data, the topic is completed
-    }
-
-    print('No completion data found for this topic');
-    return false;
+    return completionData != null;
   }
 
   bool _isNextTopic(Map<String, dynamic> completedTopics, int chapterIndex, int topicIndex) {
-    print('Checking if topic is next - Chapter: $chapterIndex, Topic: $topicIndex');
+  // Print the chapter and topic indices for debugging
 
-    if (completedTopics.isEmpty) {
-      print('Completed topics map is empty');
-      return false;
-    }
+  
+  
+  if (topicIndex == 0) return false;
 
-    // Check if the current topic is the first one in the chapter
-    if (topicIndex == 0) {
-      print('This is the first topic in the chapter');
-      return false; // The first topic can't be the "next" topic
-    }
+  // Generating the previous topic's key
+  final prevKey = "chapter_${chapterIndex}_topic_${topicIndex - 1}";
 
-    // Dynamically check the previous topic
-    final prevCompletionKey = "chapter_${chapterIndex}_topic_${topicIndex - 1}";
-    print('Looking for previous topic key: $prevCompletionKey');
+  // Check if the previous topic was completed
+  final isPrevCompleted = completedTopics[prevKey] != null;
+  
 
-    // Check if the previous topic is completed
-    final isPrevCompleted = completedTopics[prevCompletionKey] != null;
-    final isCurrentCompleted = _isTopicCompleted(completedTopics, chapterIndex, topicIndex);
+  final isCurrentCompleted = _isTopicCompleted(completedTopics, chapterIndex, topicIndex);
+  
 
-    print('Previous topic completed: $isPrevCompleted');
-    print('Current topic completed: $isCurrentCompleted');
+  return isPrevCompleted && !isCurrentCompleted;
+}
 
-    // Return true if the previous topic is completed and the current topic is not
-    return isPrevCompleted && !isCurrentCompleted;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    print('HomePage initialized');
-  }
 
   @override
   Widget build(BuildContext context) {
-    print('Building HomePage');
+    if (!_isLanguageLoaded) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return WillPopScope(
       onWillPop: _onWillPop,
       child: StoreConnector<AppState, Map<String, dynamic>>(
-        converter: (store) {
-          final completedTopics = store.state.completedTopics ?? {};
-          print('StoreConnector - Retrieved completedTopics from store: $completedTopics');
-          return completedTopics;
-        },
+        converter: (store) => store.state.completedTopics ?? {},
         builder: (context, completedTopics) {
-          print('StoreConnector builder - Building with completedTopics: $completedTopics');
-          
           return Scaffold(
             body: Stack(
               children: [
@@ -126,7 +121,7 @@ class _HomePageState extends State<HomePage> {
                   top: 70,
                   left: 30,
                   child: Text(
-                    user?.displayName ?? "Guest",
+                    user?.displayName ?? _translator.translate('guest'),
                     style: const TextStyle(
                       fontSize: 27,
                       color: Color(0xFF393939),
@@ -143,8 +138,8 @@ class _HomePageState extends State<HomePage> {
                     padding: EdgeInsets.zero,
                     itemCount: classes.length,
                     itemBuilder: (context, classIndex) {
-                      print('Building chapter $classIndex');
                       final classData = classes[classIndex];
+                      final translatedTitle = _translator.translate(classData["title"] as String);
 
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 15.0),
@@ -167,7 +162,7 @@ class _HomePageState extends State<HomePage> {
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Text(
-                                        "Chapter ${classIndex + 1}",
+                                        "${_translator.translate("chapter")} ${classIndex + 1}",
                                         style: TextStyle(
                                           fontSize: 22,
                                           color: classData["subColor"] as Color,
@@ -175,7 +170,7 @@ class _HomePageState extends State<HomePage> {
                                         ),
                                       ),
                                       Text(
-                                        classData["title"] as String,
+                                        translatedTitle,
                                         style: const TextStyle(
                                           fontSize: 16,
                                           color: Colors.white,
@@ -208,41 +203,36 @@ class _HomePageState extends State<HomePage> {
                               physics: const NeverScrollableScrollPhysics(),
                               itemCount: (classData["topics"] as List).length,
                               itemBuilder: (context, topicIndex) {
-                                print('Building topic $topicIndex for chapter $classIndex');
                                 final topic = (classData["topics"] as List)[topicIndex];
-                                final isCompleted = _isTopicCompleted(completedTopics, classIndex + 1, topicIndex);
+                                final isCompleted = _isTopicCompleted(completedTopics, classIndex+1, topicIndex);
                                 final isNextTopic = _isNextTopic(completedTopics, classIndex + 1, topicIndex);
                                 final isFirstTopic = classIndex == 0 && topicIndex == 0;
                                 final isEnabled = isCompleted || isNextTopic || isFirstTopic;
-
-                                print('Topic status - Completed: $isCompleted, Next: $isNextTopic, First: $isFirstTopic, Enabled: $isEnabled');
+                                final translatedTopicTitle = _translator.translate(topic["title"] as String);
 
                                 return GestureDetector(
                                   onTap: isEnabled
                                       ? () {
-                                          print('Navigating to topic ${topic["title"]}');
+                                        print("Chapter Index: $classIndex");
+        print("Topic Index: $topicIndex");
                                           Navigator.push(
                                             context,
                                             MaterialPageRoute(
                                               builder: (context) => topic["title"] == "Introduction"
                                                   ? ConversationScreen(chapter: classIndex + 1)
                                                   : TheoryScreen(
-                                                      classIndex: classIndex,
+                                                      classIndex: classIndex+1,
                                                       topicIndex: topicIndex,
                                                       background: classIndex + 1,
                                                     ),
                                             ),
-                                          ).then((_) {
-                                            print('Returned from topic screen, rebuilding');
-                                            setState(() {});
-                                          });
+                                          ).then((_) => setState(() {}));
                                         }
-                                      : () {
-                                          print('Topic locked - showing snackbar');
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('Complete the previous topic to unlock this')),
-                                          );
-                                        },
+                                      : () => ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('Complete the previous topic to unlock this'),
+                                            ),
+                                          ),
                                   child: AnimatedSwitcher(
                                     duration: const Duration(milliseconds: 500),
                                     child: Opacity(
@@ -253,7 +243,7 @@ class _HomePageState extends State<HomePage> {
                                         isLast: topicIndex == (classData["topics"] as List).length - 1,
                                         isPast: isCompleted,
                                         image: topic["image"] as String,
-                                        text: topic["title"] as String,
+                                        text: translatedTopicTitle,
                                         color: isCompleted
                                             ? Colors.green
                                             : isNextTopic
@@ -279,9 +269,7 @@ class _HomePageState extends State<HomePage> {
                   right: 10,
                   bottom: 120,
                   child: FloatingActionButton(
-                    onPressed: () {
-                      print('FAB pressed');
-                    },
+                    onPressed: () {},
                     backgroundColor: Colors.white,
                     shape: const CircleBorder(),
                     child: const Padding(
@@ -294,7 +282,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                 ),
-                Positioned(
+                const Positioned(
                   right: 0,
                   left: 0,
                   bottom: 0,

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 const classes = [
   {
-    "chapter_number": 0,
+    "chapter_number": 1,
     "level": "beginner",
     "image": "assets/home_screen/alphabets.png",
     "title": "First Steps in Berlin",

@@ -1,665 +1,370 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:my_app/Screens/Introductions/completion_screen.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:speech_to_text/speech_to_text.dart';
-import 'package:audioplayers/audioplayers.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:flutter_tts/flutter_tts.dart';
+import 'package:my_app/Screens/Topic flow/bloc/mini_game_bloc.dart';
+import 'package:my_app/Screens/Topic flow/widgets/question_header.dart';
+import 'package:my_app/Screens/Topic flow/widgets/fill_in_the_blank.dart';
+import 'package:my_app/Screens/Topic flow/widgets/multiple_choice.dart';
+import 'package:my_app/Screens/Topic flow/widgets/pronunciation.dart';
+import 'package:my_app/Screens/Topic flow/widgets/listening_mcq.dart';
+import 'package:my_app/Screens/Topic flow/widgets/listening_typing.dart';
+import 'package:my_app/Screens/Topic flow/widgets/match_pronunciation.dart';
+import 'package:my_app/Screens/Topic flow/widgets/jumbled_sentence.dart';
 
-class MiniGameScreen extends StatefulWidget {
+class MiniGameScreen extends StatelessWidget {
   final List<Map<String, dynamic>> questions;
   final int background;
   final int topicIndex;
   final int chapterIndex;
 
-  const MiniGameScreen({
+  MiniGameScreen({
     super.key,
     required this.questions,
     required this.background,
     required this.topicIndex,
     required this.chapterIndex,
-  });
+  }) {
+    assert(questions.isNotEmpty, 'Questions list cannot be empty');
+    debugPrint('📋 Questions received:');
+    for (var i = 0; i < questions.length; i++) {
+      debugPrint('  ${i + 1}. ${questions[i]}');
+    }
+  }
 
   @override
-  State<MiniGameScreen> createState() => _MiniGameScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => MiniGameBloc()..add(LoadGame(
+        questions: questions,
+        background: background,
+        topicIndex: topicIndex,
+        chapterIndex: chapterIndex,
+      )),
+      child: _MiniGameView(
+        background: background,
+        topicIndex: topicIndex,
+        chapterIndex: chapterIndex,
+      ),
+    );
+  }
 }
 
-class _MiniGameScreenState extends State<MiniGameScreen> {
-  int currentIndex = 0;
-  int score = 0;
-  String userAnswer = '';
-  bool isListening = false;
-  final SpeechToText _speechToText = SpeechToText();
-  final AudioPlayer _audioPlayer = AudioPlayer();
-  final FlutterTts _flutterTts = FlutterTts();
+class _MiniGameView extends StatelessWidget {
+  final int background;
+  final int topicIndex;
+  final int chapterIndex;
 
-  @override
-  void dispose() {
-    _speechToText.stop();
-    _audioPlayer.dispose();
-    super.dispose();
-  }
+  const _MiniGameView({
+    required this.background,
+    required this.topicIndex,
+    required this.chapterIndex,
+  });
 
-  Future<void> _requestPermissions() async {
-    var status = await Permission.microphone.request();
-    if (status == PermissionStatus.permanentlyDenied) {
-      openAppSettings(); // Open app settings
-    } else if (status != PermissionStatus.granted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Microphone permission is required')),
-      );
-    }
-  }
-
-  void checkAnswer(String? answer) {
-    if (answer == null || answer.trim().isEmpty) {
-      _showFeedback(false, 'No answer provided');
-      return;
-    }
-
-    final question = widget.questions[currentIndex];
-    if (!question.containsKey('correct_answer') &&
-        question['question_type'] != 'match the following(words)') {
-      print('Error: Missing correct_answer in question data');
-      _showFeedback(false, 'Missing correct answer in data');
-      return;
-    }
-
-    // Normalize answers
-    String userAnswer = answer.trim().toLowerCase().replaceAll(
-      RegExp(r'[^\w\s]'),
-      '',
-    );
-    String correctAnswer = question['correct_answer']
-        .toString()
-        .trim()
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^\w\s]'), '');
-
-    print('User Answer: "$userAnswer", Correct Answer: "$correctAnswer"');
-
-    if (userAnswer == correctAnswer) {
-      setState(() => score++);
-      _showFeedback(true);
-    } else {
-      _showFeedback(false, question['correct_answer']);
-    }
-  }
-
-  void _showFeedback(bool isCorrect, [String? correctAnswer]) {
+  void _showFeedback(BuildContext context, bool isCorrect, [String? correctAnswer]) {
     showDialog(
       context: context,
-      barrierDismissible: false, // Prevent accidental closing
-      builder:
-          (_) => AlertDialog(
-            backgroundColor:
-                isCorrect ? Colors.green.shade100 : Colors.red.shade100,
-            title: Icon(
-              isCorrect ? Icons.check_circle : Icons.cancel,
-              color: isCorrect ? Colors.green : Colors.red,
-              size: 60,
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  isCorrect ? 'Correct!' : 'Wrong answer!',
-                  style: GoogleFonts.poppins(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                if (!isCorrect && correctAnswer != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    'Correct Answer: $correctAnswer',
-                    style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.black54,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(
-                    context,
-                    rootNavigator: true,
-                  ).pop(); // Close dialog only
-                  _nextQuestion(); // Load next question
-                },
-                child: Text('Next', style: GoogleFonts.poppins(fontSize: 18)),
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        backgroundColor: isCorrect ? Colors.green.shade100 : Colors.red.shade100,
+        title: Icon(
+          isCorrect ? Icons.check_circle : Icons.cancel,
+          color: isCorrect ? Colors.green : Colors.red,
+          size: 60,
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              isCorrect ? 'Correct!' : 'Wrong answer!',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w500,
               ),
-            ],
-          ),
-    );
-  }
-
-  void _nextQuestion() {
-    if (currentIndex < widget.questions.length - 1) {
-      setState(() {
-        currentIndex++;
-        userAnswer = '';
-      });
-    } else {
-      _showFinalScore();
-    }
-  }
-
-  void _showFinalScore() {
-    showDialog(
-      context: context,
-      builder:
-          (_) => AlertDialog(
-            backgroundColor: Colors.blue.shade100,
-            title: Text(
-              'Game Over!',
-              style: GoogleFonts.poppins(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            content: Text(
-              'You scored $score out of ${widget.questions.length}!',
-              style: GoogleFonts.poppins(fontSize: 20),
               textAlign: TextAlign.center,
             ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(
-                    context,
-                    rootNavigator: true,
-                  ).pop(); 
-                  Navigator.of(context, rootNavigator: true).push(
-                    MaterialPageRoute(
-                      builder:
-                          (context) => CompletionScreen(
-                            background: widget.background,
-                            topicIndex: widget.topicIndex,
-                            chapterIndex: widget.chapterIndex,
-                          ),
-                    ),
-                  );
-                },
-                child: Text('OK', style: GoogleFonts.poppins(fontSize: 18)),
+            if (!isCorrect && correctAnswer != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Correct Answer: $correctAnswer',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.black54,
+                ),
+                textAlign: TextAlign.center,
               ),
             ],
+          ],
+        ),
+        actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(context, rootNavigator: true).pop();
+            // Only manually go to next question if not multiple choice
+            final currentQuestion = context.read<MiniGameBloc>().questions[
+              context.read<MiniGameBloc>().state.currentIndex
+            ];
+            if (currentQuestion['question_type'] != 'multiple_choice') {
+              context.read<MiniGameBloc>().add(NextQuestion());
+            }
+          },
+          child: const Text('Next', style: TextStyle(fontSize: 18)),
+        ),
+      ],
+      ),
+    );
+  }
+
+  void _showFinalScore(BuildContext context, MiniGameState state) {
+    final questions = context.read<MiniGameBloc>().questions;
+    
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: Colors.blue.shade100,
+        title: const Text(
+          'Game Over!',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
           ),
+        ),
+        content: Text(
+          'You scored ${state.score} out of ${questions.length}!',
+          style: const TextStyle(fontSize: 20),
+          textAlign: TextAlign.center,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context, rootNavigator: true).pop();
+              Navigator.of(context, rootNavigator: true).push(
+                MaterialPageRoute(
+                  builder: (context) => CompletionScreen(
+                    background: background,
+                    topicIndex: topicIndex,
+                    chapterIndex: chapterIndex,
+                  ),
+                ),
+              );
+            },
+            child: const Text('OK', style: TextStyle(fontSize: 18)),
+          ),
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final question = widget.questions[currentIndex];
-
-    return Stack(
-      children: [
-        // Background image
-        Positioned.fill(
-          child: Image.asset(
-            "assets/introductions/bg${widget.background}.jpg",
-            fit: BoxFit.cover,
-          ),
-        ),
-
-        Scaffold(
-          backgroundColor: Colors.pink.withOpacity(0.3),
-          appBar: AppBar(
-            backgroundColor: Color.fromARGB(255, 103, 96, 195),
-            title: Text(
-              'Score: $score',
-              style: GoogleFonts.poppins(
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
+    return BlocConsumer<MiniGameBloc, MiniGameState>(
+      listener: (context, state) {
+        if (state.showFeedback) {
+          if (state.currentIndex >= context.read<MiniGameBloc>().questions.length - 1) {
+            _showFinalScore(context, state);
+          } else {
+            _showFeedback(
+              context,
+              state.isCorrect,
+              state.isCorrect ? null : state.correctAnswer,
+            );
+          }
+        }
+      },
+      builder: (context, state) {
+        final questions = context.read<MiniGameBloc>().questions;
+        
+        // Add protection against empty questions list
+        if (questions.isEmpty) {
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('No questions available'),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Go Back'),
+                  ),
+                ],
               ),
             ),
-            centerTitle: true,
-          ),
-          body: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                const SizedBox(height: 20),
-                Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        Text(
-                          question['title'] ?? question['question'],
-                          style: GoogleFonts.poppins(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
+          );
+        }
+
+        final question = questions[state.currentIndex];
+        
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: Image.asset(
+                "assets/theory/Mini_back.jpg",
+                fit: BoxFit.cover,
+              ),
+            ),
+            Scaffold(
+              resizeToAvoidBottomInset: false,
+              backgroundColor: const Color.fromARGB(141, 184, 217, 248),
+              appBar: AppBar(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                leading: const BackButton(color: Colors.black),
+                automaticallyImplyLeading: true,
+              ),
+              body: Column(
+                children: [
+                  QuestionHeader(questionNumber: state.questionNumber),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                          left: 20, right: 20, top: 5, bottom: 35),
+                      child: Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: const Color.fromARGB(255, 255, 255, 255),
+                          border: Border.all(
+                            color: const Color.fromARGB(255, 157, 191, 245),
+                            width: 1.5,
                           ),
-                          textAlign: TextAlign.center,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(24),
+                            topRight: Radius.circular(24),
+                            bottomLeft: Radius.circular(24),
+                            bottomRight: Radius.circular(24),
+                          ),
                         ),
-                        if (question.containsKey('question_native'))
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Text(
-                              question['question_native'],
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                fontStyle: FontStyle.italic,
-                                color: Colors.grey,
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 20),
+                            Text(
+                              _getQuestionInstruction(question),
+                              style: const TextStyle(
+                                fontSize: 25,
+                                wordSpacing: 1.5,
+                                fontWeight: FontWeight.w700,
                               ),
                               textAlign: TextAlign.center,
                             ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _buildQuestionWidget(question),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuestionWidget(Map<String, dynamic> question) {
-    switch (question['question_type']) {
-      case 'correct option from multiple options':
-        return _buildMultipleChoice(question);
-      case 'type in the blanks':
-        return _buildFillInTheBlank();
-      case 'speak(testing)':
-        if (question['question'] is String) {
-          return _buildSpeaking(question['question']);
-        }
-        return const SizedBox(); // Fallback if data is invalid
-      case 'listen':
-        return _buildListening(question);
-      case 'match the following(words)':
-        if (question['options'] != null &&
-            question['options'] is List<dynamic>) {
-          try {
-            // Extract options from 'options' instead of 'question'
-            List<String> options =
-                question['options'].whereType<String>().toList();
-            if (options.isNotEmpty) {
-              return _buildMatchPronunciation(options);
-            } else {
-              print('Options list is empty');
-            }
-          } catch (e) {
-            print('Error processing match question: $e');
-          }
-        } else {
-          print('Invalid data for match the following(words)');
-        }
-        return const SizedBox(); // Fallback if data is invalid
-      default:
-        print('Unknown question type: ${question['question_type']}');
-        return Container();
-    }
-  }
-
-  Widget _buildFillInTheBlank() {
-    return Column(
-      children: [
-        TextField(
-          onChanged: (value) => userAnswer = value,
-          decoration: InputDecoration(
-            hintText: 'Type your answer...',
-            filled: true, // Enables background color
-            fillColor: Colors.white, // Sets background color to white
-            border: OutlineInputBorder(
-              // Optional: adds a border
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade400),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade400),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.blue),
-            ),
-          ),
-        ),
-        ElevatedButton(
-          onPressed: () => checkAnswer(userAnswer),
-          child: const Text('Submit'),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMultipleChoice(Map<String, dynamic> question) {
-    return Column(
-      children:
-          (question['options'] as List).map((option) {
-            return ElevatedButton(
-              onPressed: () => checkAnswer(option),
-              child: Text(option),
-            );
-          }).toList(),
-    );
-  }
-
-  Widget _buildSpeaking(String prompt) {
-    return Column(
-      children: [
-        ElevatedButton(
-          onPressed: () async {
-            await _requestPermissions();
-
-            if (await _speechToText.hasPermission &&
-                !_speechToText.isListening) {
-              bool available = await _speechToText.initialize(
-                onStatus: (status) => print('Status: $status'),
-                onError: (error) => print('Error: $error'),
-              );
-
-              if (available) {
-                setState(() => isListening = true);
-                _speechToText.listen(
-                  onResult: (result) {
-                    setState(() {
-                      userAnswer = result.recognizedWords;
-                    });
-                    // Only stop listening and check the answer if speech is complete
-                    if (result.finalResult) {
-                      _speechToText.stop();
-                      setState(() => isListening = false);
-                      checkAnswer(userAnswer);
-                    }
-                  },
-                  localeId: 'de_DE', // Set to German locale
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Speech recognition not available'),
-                  ),
-                );
-              }
-            } else {
-              if (_speechToText.isListening) {
-                await _speechToText.stop();
-                setState(() => isListening = false);
-                checkAnswer(userAnswer);
-              }
-            }
-          },
-          child: Text(isListening ? 'Stop' : 'Speak'),
-        ),
-        if (userAnswer.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color.fromARGB(94, 0, 0, 0),
-                borderRadius: BorderRadius.circular(12), // Rounded corners
-              ),
-              padding: EdgeInsets.all(10),
-              child: Text(
-                'You said: $userAnswer',
-                style: GoogleFonts.poppins(fontSize: 16, color: Colors.white),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Future<void> _speak(String text) async {
-    await _flutterTts.setLanguage('de-DE'); // Set to German
-    await _flutterTts.setPitch(1.0);
-    await _flutterTts.speak(text);
-  }
-
-  Widget _buildListening(Map<String, dynamic> question) {
-    return Column(
-      children:
-          (question['options'] as List).map((option) {
-            return ElevatedButton(
-              onPressed: () => checkAnswer(option),
-              child: Text(option),
-            );
-          }).toList(),
-    );
-  }
-
-  Widget _buildMatchPronunciation(List<String> options) {
-    if (options.isEmpty) {
-      return const Center(
-        child: Text(
-          'No options available',
-          style: TextStyle(fontSize: 18, color: Colors.red),
-        ),
-      );
-    }
-
-    // Generate audioMap dynamically based on options
-    Map<String, String> audioMap = {
-      for (var word in options)
-        word: 'assets/audio/${word.replaceAll(' ', '_').toLowerCase()}.mp3',
-    };
-
-    List<String> shuffledKeys = audioMap.keys.toList()..shuffle();
-
-    Map<String, String?> matchedAnswers = {};
-    Map<String, bool> matchResults = {};
-
-    return StatefulBuilder(
-      builder: (context, setState) {
-        void checkMatch(String key, String value) {
-          bool isCorrect = key == value;
-          setState(() {
-            matchedAnswers[key] = value;
-            matchResults[key] = isCorrect;
-          });
-        }
-
-        Future<void> playAudio(String word) async {
-          String? audioPath = audioMap[word];
-          if (audioPath != null) {
-            try {
-              final player = AudioPlayer();
-              await player.play(AssetSource(audioPath));
-            } catch (e) {
-              print("Error playing audio for $word: $e");
-            }
-          }
-        }
-
-        return Expanded(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Left side: Words to match
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children:
-                            options.map((word) {
-                              return Draggable<String>(
-                                data: word,
-                                feedback: Material(
-                                  color: Colors.transparent,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.purple.shade300,
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
-                                        color: Colors.purple,
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      word,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                        color: Colors.white,
-                                      ),
-                                    ),
+                            if (question.containsKey('question_native'))
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Text(
+                                  question['question_native'],
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontStyle: FontStyle.italic,
+                                    color: Colors.grey,
                                   ),
+                                  textAlign: TextAlign.center,
                                 ),
-                                childWhenDragging: Opacity(
-                                  opacity: 0.3,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.purple.shade100,
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
-                                        color: Colors.purple,
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      word,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                child: Container(
-                                  padding: const EdgeInsets.all(12),
-                                  margin: const EdgeInsets.symmetric(
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.purple.shade100,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: Colors.purple,
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    word,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
+                              ),
+                            const SizedBox(height: 30),
+                            Divider(
+                              color: Colors.grey.shade300,
+                              thickness: 1,
+                              height: 1,
+                            ),
+                            _buildQuestionWidget(context, question, state),
+                          ],
+                        ),
                       ),
                     ),
-
-                    // Right side: Drag Targets (Shuffled Audio buttons)
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children:
-                            shuffledKeys.map((word) {
-                              bool? isMatched = matchResults[word];
-
-                              return DragTarget<String>(
-                                onAcceptWithDetails: (receivedWord) {
-                                  checkMatch(word, receivedWord as String);
-                                },
-                                builder: (
-                                  context,
-                                  candidateData,
-                                  rejectedData,
-                                ) {
-                                  return ElevatedButton.icon(
-                                    onPressed: () async {
-                                      await playAudio(word);
-                                    },
-                                    icon: const Icon(Icons.volume_up),
-                                    label: Text(
-                                      matchedAnswers[word] ?? 'Play Audio',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                        color:
-                                            isMatched == true
-                                                ? Colors.green
-                                                : isMatched == false
-                                                ? Colors.red
-                                                : Colors.black,
-                                      ),
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor:
-                                          isMatched == true
-                                              ? Colors.green.shade100
-                                              : isMatched == false
-                                              ? Colors.red.shade100
-                                              : Colors.white,
-                                      foregroundColor: Colors.black,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 12,
-                                        horizontal: 16,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        side: BorderSide(
-                                          color:
-                                              isMatched == true
-                                                  ? Colors.green
-                                                  : isMatched == false
-                                                  ? Colors.red
-                                                  : Colors.purple,
-                                          width: 1,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              );
-                            }).toList(),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // Submit Button
-                if (matchedAnswers.length == audioMap.length)
-                  ElevatedButton(
-                    onPressed: () {
-                      bool allCorrect = matchResults.values.every(
-                        (result) => result,
-                      );
-                      if (allCorrect) {
-                        setState(() {
-                          score++; // Add 1 to score only when all pairs are matched correctly
-                        });
-                        _showFeedback(true);
-                      } else {
-                        _showFeedback(false, 'Try again!');
-                      }
-                    },
-                    child: Text(
-                      'Submit',
-                      style: GoogleFonts.poppins(fontSize: 18),
-                    ),
                   ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ],
         );
       },
     );
+  }
+
+  String _getQuestionInstruction(Map<String, dynamic> question) {
+    switch (question['question_type']) {
+      case "listening_typing":
+        return "Listen to the audio and type what you hear";
+      case "pronounciation":
+        return "Repeat after the audio";
+      case "listening_mcq":
+        return "Listen to the audio and select the correct option";
+      case "jumbled_sentence":
+        return "Arrange the words to form a sentence";
+      default:
+        return question['question'] ?? question['title'] ?? '';
+    }
+  }
+
+  Widget _buildQuestionWidget(BuildContext context, Map<String, dynamic> question, MiniGameState state) {
+    try {
+      switch (question['question_type']) {
+        case 'type_in_the_blanks':
+          return FillInTheBlankWidget();
+        case 'multiple_choice':
+          final options = (question['options'] as List).map((e) => e.toString()).toList();
+          return MultipleChoiceWidget(
+            options: options,
+            selectedOption: state.selectedOption,
+          );
+        case 'pronounciation':
+          return PronunciationWidget(
+            textToRead: question['text_to_read'],
+            isListening: state.isListening,
+            userAnswer: state.userAnswer,
+          );
+        case 'listening_mcq':
+          final options = (question['options'] as List).map((e) => e.toString()).toList();
+          return ListeningMCQWidget(
+            textToRead: question['text_to_read'],
+            options: options,
+            selectedOption: state.selectedOption,
+          );
+        case 'listening_typing':
+          return ListeningTypingWidget(
+            textToRead: question['text_to_read'],
+            userAnswer: state.userAnswer,
+          );
+        case 'match_words':
+          if (question['options'] != null && question['options'] is List<dynamic>) {
+            try {
+              List<String> options = (question['options'] as List).map((e) => e.toString()).toList();
+              if (options.isNotEmpty) {
+                return MatchPronunciationWidget(
+                  options: options,
+                  shuffledWords: state.shuffledWords,
+               
+                  matchedAnswers: state.matchedAnswers,
+                  matchResults: state.matchResults,
+                );
+              }
+            } catch (e) {
+              debugPrint('Error processing match question: $e');
+            }
+          }
+          return const SizedBox();
+        case 'jumbled_sentence':
+          return JumbledSentenceWidget(
+            correctAnswer: question['correct_answer'].toString(),
+            userArrangement: state.userArrangement,
+            shuffledWords: state.shuffledWords,
+          );
+        default:
+          return Container(
+            child: const Text(
+              'Unsupported question type',
+              style: TextStyle(fontSize: 18),
+            ),
+          );
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Error building question widget: $e');
+      debugPrint('Stack trace: $stackTrace');
+      return Container(
+        child: const Text(
+          'Error displaying question',
+          style: TextStyle(fontSize: 18),
+        ),
+      );
+    }
   }
 }

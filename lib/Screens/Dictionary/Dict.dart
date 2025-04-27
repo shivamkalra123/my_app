@@ -3,6 +3,7 @@ import 'package:my_app/Screens/HomePage/HomePage.dart';
 import 'package:my_app/Screens/Dictionary/api.dart';
 import 'package:lottie/lottie.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:my_app/Screens/UserProfile/settings/transaltion_service/translation.dart';
 
 // void main() {
 //   runApp(DictionaryApp());
@@ -44,7 +45,7 @@ class _DictionaryHomePageState extends State<DictionaryHomePage> {
     Color(0xFFFFE6C1),
     Color(0xFFFFAFAF),
   ];
-
+  final TranslationService _translator = TranslationService();
   List fav = [];
 
   void _addToFav(word) {
@@ -180,17 +181,18 @@ class _DictionaryHomePageState extends State<DictionaryHomePage> {
                     ),
                     SizedBox(width: 30),
                     Text(
-                      "Dictionary!",
-                      style: TextStyle(fontSize: 30),
-                      textAlign: TextAlign.center,
-                    ),
+  _translator.translate("dictionary"),
+  style: const TextStyle(fontSize: 30),
+  textAlign: TextAlign.center,
+)
+
                   ],
                 ),
                 SizedBox(height: 10),
                 TextField(
                   controller: _controller,
                   decoration: InputDecoration(
-                    labelText: 'Search Word',
+                    labelText: _translator.translate("search_word"),
                     border: OutlineInputBorder(),
                     suffix: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -227,7 +229,7 @@ class _DictionaryHomePageState extends State<DictionaryHomePage> {
                                       ),
                                     ),
                                     Text(
-                                      'No Favourites yet !',
+                                      _translator.translate("No Favourites yet !"),
                                       style: TextStyle(fontSize: 20),
                                     ),
                                   ],

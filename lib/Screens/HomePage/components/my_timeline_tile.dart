@@ -45,9 +45,8 @@ class _MyTimeLineTileState extends State<MyTimeLineTile> with SingleTickerProvid
   void initState() {
     super.initState();
 
-    // Initialize animation controller for sliding effect
     _controller = AnimationController(
-      duration: Duration(seconds: 4), // Slow sliding effect
+      duration: Duration(seconds: 4),
       vsync: this,
     );
 
@@ -55,7 +54,6 @@ class _MyTimeLineTileState extends State<MyTimeLineTile> with SingleTickerProvid
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
 
-    // Check if the topic is completed and update the animation
     checkIfCompleted();
   }
 
@@ -66,7 +64,6 @@ class _MyTimeLineTileState extends State<MyTimeLineTile> with SingleTickerProvid
     try {
       final doc = await FirebaseFirestore.instance.collection('user_progress').doc(user.uid).get();
       final data = doc.data();
-
       if (data == null) return;
 
       final completedTopics = data['completed_topics'] as Map<String, dynamic>? ?? {};
@@ -74,12 +71,9 @@ class _MyTimeLineTileState extends State<MyTimeLineTile> with SingleTickerProvid
       final prevCompletionKey = 'chapter_${widget.chapterIndex}_topic_${widget.topicIndex - 1}';
 
       setState(() {
-        // Check if the current topic is completed
         isCompleted = completedTopics.containsKey(completionKey);
-        // The next topic is unlocked if the current one is completed
-        isNextTopic = isCompleted || completedTopics.containsKey(prevCompletionKey);
+        isNextTopic = !isCompleted && completedTopics.containsKey(prevCompletionKey);
 
-        // Trigger animation for the next topic if it's unlocked
         if (isNextTopic && !_hasAnimated) {
           _hasAnimated = true;
           _controller.forward();
@@ -106,34 +100,40 @@ class _MyTimeLineTileState extends State<MyTimeLineTile> with SingleTickerProvid
         indicatorStyle: IndicatorStyle(
           width: 30,
           height: 30,
-          indicator: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, child) {
-              return Transform.translate(
-                offset: Offset(0.0, isNextTopic ? _slideAnimation.value : 0.0), // ✅ Slides down smoothly
-                child: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    image: DecorationImage(
-                      image: AssetImage(
-                        isNextTopic
-                            ? "assets/introductions/zhuaHug.gif" // ✅ Animated GIF for next topic
-                            : "assets/profile/cat.png", // ✅ Static for completed topics
-                      ),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+          indicator: isNextTopic
+              ? AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, child) {
+                    return Transform.translate(
+                      offset: Offset(0.0, _slideAnimation.value),
+                      child: _buildIndicatorImage("assets/introductions/zhuaHug.gif"),
+                    );
+                  },
+                )
+              : _buildIndicatorImage(
+                  isCompleted
+                      ? "assets/profile/cat.png" // Static completed image
+                      : "assets/profile/cat.png", // Maybe a lock or default for locked topics
                 ),
-              );
-            },
-          ),
         ),
         endChild: EventCard(
           isPast: widget.isPast,
           imagePath: widget.image,
           text: widget.text,
-          color: isCompleted ? Colors.green : widget.color,  // ✅ Apply green color for completed
+          color: isCompleted ? Colors.green : widget.color,
           subColor: widget.subColor,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIndicatorImage(String assetPath) {
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        image: DecorationImage(
+          image: AssetImage(assetPath),
+          fit: BoxFit.cover,
         ),
       ),
     );
